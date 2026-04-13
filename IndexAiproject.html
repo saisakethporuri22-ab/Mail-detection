@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mail - Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --google-blue: #1a73e8;
+            --google-red: #ea4335;
+            --google-yellow: #fbbc04;
+            --google-green: #34a853;
+            --bg-gray: #f8f9fa;
+            --border: #dadce0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: white;
+            color: #3c4043;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* LEFT NAVIGATION (Sidebar Style) */
+        .sidebar {
+            width: 280px;
+            padding: 12px;
+            background-color: var(--bg-gray);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 22px;
+            color: #5f6368;
+            margin-bottom: 20px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            border-radius: 0 25px 25px 0;
+            margin-right: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+            color: #5f6368;
+        }
+
+        .nav-item:hover { background-color: #e8eaed; }
+        .nav-active { background-color: #e8f0fe; color: var(--google-blue); }
+
+        /* MAIN CONTENT AREA */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            align-items: center;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            resize: none;
+            outline: none;
+            margin-bottom: 16px;
+            background-color: #f1f3f4;
+            transition: 0.2s;
+        }
+
+        textarea:focus {
+            background-color: white;
+            border: 2px solid var(--google-blue);
+            padding: 15px; 
+        }
+
+        .btn-analyze {
+            background-color: var(--google-blue);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 24px;
+            font-family: 'Google Sans', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            float: right;
+            transition: box-shadow 0.2s;
+        }
+
+        .btn-analyze:hover { box-shadow: 0 1px 3px 1px rgba(66,133,244,0.3); }
+
+        /* ANALYSIS OVERLAY */
+        .status-area {
+            margin-top: 40px;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .loader-bar {
+            width: 100%;
+            height: 4px;
+            background: #e8eaed;
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loader-progress {
+            width: 30%;
+            height: 100%;
+            background: var(--google-blue);
+            animation: googleMove 1.5s infinite linear;
+        }
+
+        @keyframes googleMove {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(350%); }
+        }
+
+        .result-pill {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 16px;
+            font-weight: 500;
+            margin-top: 10px;
+            font-family: 'Google Sans', sans-serif;
+            visibility: hidden;
+        }
+
+        /* RIGHT COUNTERS */
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .stat-circle {
+            text-align: center;
+            width: 100px;
+        }
+
+        .count-val { font-size: 24px; font-weight: 500; }
+        .count-label { font-size: 12px; color: #5f6368; text-transform: uppercase; }
+
+        /* VIEW PANEL */
+        .full-view {
+            position: fixed;
+            right: -100%;
+            top: 0;
+            width: 400px;
+            height: 100%;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: 0.3s;
+            padding: 24px;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        .full-view.active { right: 0; }
+        .mail-snippet {
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            font-size: 14px;
+            color: #3c4043;
+            line-height: 1.5;
+        }
+
+        /* Highlight Style */
+        .spam-highlight {
+            color: #d93025;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo">
+            <span style="color:#4285F4">M</span>
+            <span style="color:#EA4335">a</span>
+            <span style="color:#FBBC05">i</span>
+            <span style="color:#4285F4">l</span>
+            <span style="margin-left:8px; font-weight: 400;">- Analyzer</span>
+        </div>
+        <div class="nav-item nav-active" onclick="location.reload()" style="cursor:pointer">📥 Inbox</div>
+        <div class="nav-item" onclick="togglePanel('ham')">✅ Ham Mails</div>
+        <div class="nav-item" onclick="togglePanel('gray')">⚠️ Grey mail</div>
+        <div class="nav-item" onclick="togglePanel('spam')">🚫 Spam Mails</div>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <h2 style="font-family:'Google Sans'; margin-bottom: 20px;">Analyze new message</h2>
+            <textarea id="text" placeholder="Paste email content here to check for security threats..."></textarea>
+            <button class="btn-analyze" onclick="startGoogleAnalysis()">Scan Message</button>
+        </div>
+
+        <div class="status-area">
+            <div class="loader-bar" id="loader">
+                <div class="loader-progress"></div>
+            </div>
+            <div id="resultText" style="font-family:'Google Sans'; font-size: 18px;">Ready to scan</div>
+            <div id="resultPill" class="result-pill"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-circle" style="color: var(--google-green)">
+                <div class="count-val" id="hamCount">0</div>
+                <div class="count-label">Clean</div>
+            </div>
+            <div class="stat-circle" style="color: var(--google-yellow)">
+                <div class="count-val" id="grayCount">0</div>
+                <div class="count-label">Flagged</div>
+            </div>
+            <div class="stat-circle" style="color: var(--google-red)">
+                <div class="count-val" id="spamCount">0</div>
+                <div class="count-label">Blocked</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="full-view" id="sidePanel">
+        <button onclick="document.getElementById('sidePanel').classList.remove('active')" style="border:none; background:none; cursor:pointer; color:var(--google-blue); font-weight:500; margin-bottom:20px;">✕ Close</button>
+        <h3 id="panelTitle" style="font-family:'Google Sans'; margin-bottom:15px;">List</h3>
+        <div id="panelContent"></div>
+    </div>
+
+    <script>
+        let data = { ham: [], gray: [], spam: [] };
+        // Define common words globally so we can use them for highlighting
+        const spamKeywords = ["win", "free", "money", "urgent", "click", "lottery", "account", "prize"];
+
+        function startGoogleAnalysis() {
+            let text = document.getElementById("text").value.trim();
+            if (!text) return;
+
+            const loader = document.getElementById("loader");
+            const resText = document.getElementById("resultText");
+            const resPill = document.getElementById("resultPill");
+
+            loader.style.display = "block";
+            resText.innerText = "Verifying message safety...";
+            resPill.style.visibility = "hidden";
+
+            setTimeout(() => {
+                loader.style.display = "none";
+                let score = 0;
+                let lowerText = text.toLowerCase();
+                spamKeywords.forEach(w => { if(lowerText.includes(w)) score++; });
+
+                let percent = Math.min(score * 25, 100);
+                resPill.style.visibility = "visible";
+
+                if (percent >= 75) {
+                    resText.innerText = "High risk detected";
+                    resPill.innerText = "Spam Filtered";
+                    resPill.style.backgroundColor = "#fce8e6";
+                    resPill.style.color = "#d93025";
+                    data.spam.push(text);
+                } else if (percent >= 25) {
+                    resText.innerText = "Potential security risk";
+                    resPill.innerText = "Flagged as Gray";
+                    resPill.style.backgroundColor = "#fef7e0";
+                    resPill.style.color = "#ea8600";
+                    data.gray.push(text);
+                } else {
+                    resText.innerText = "No threats found";
+                    resPill.innerText = "Verified Safe";
+                    resPill.style.backgroundColor = "#e6f4ea";
+                    resPill.style.color = "#1e8e3e";
+                    data.ham.push(text);
+                }
+
+                updateStats();
+                document.getElementById("text").value = "";
+            }, 1800);
+        }
+
+        function updateStats() {
+            document.getElementById("hamCount").innerText = data.ham.length;
+            document.getElementById("grayCount").innerText = data.gray.length;
+            document.getElementById("spamCount").innerText = data.spam.length;
+        }
+
+        function togglePanel(type) {
+            const panel = document.getElementById("sidePanel");
+            const content = document.getElementById("panelContent");
+            document.getElementById("panelTitle").innerText = type.toUpperCase() + " Archives";
+            
+            panel.classList.add("active");
+            content.innerHTML = "";
+            
+            data[type].forEach(m => {
+                let div = document.createElement("div");
+                div.className = "mail-snippet";
+                
+                // NEW LOGIC: Highlight keywords in red if it's Spam or Gray mail
+                let highlightedText = m;
+                if (type === 'spam' || type === 'gray') {
+                    spamKeywords.forEach(word => {
+                        // Regex: 'gi' means global search and case-insensitive
+                        const regex = new RegExp(`(${word})`, 'gi');
+                        highlightedText = highlightedText.replace(regex, '<span class="spam-highlight">$1</span>');
+                    });
+                }
+                
+                div.innerHTML = highlightedText; 
+                content.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
